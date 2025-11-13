@@ -1,41 +1,41 @@
 import { Duration } from 'aws-cdk-lib';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { resolve } from 'path';
 import { StandardLambda } from '../../../../common/StandardLambda';
 import { APP_ROOT } from '../../../../common/utils';
+import type { Config } from '../../../../../app/src/supabaseKeepAlive/cron/config';
 
 interface SupabaseKeepAliveCronProps {
     appName: string;
 }
 
 export class SupabaseKeepAliveCron extends Construct {
-    public readonly lambda: StandardLambda;
-    public readonly scheduleRule: Rule;
-
     constructor(scope: Construct, id: string, props: SupabaseKeepAliveCronProps) {
         super(scope, id);
 
         const { appName } = props;
-        const intervalDays = 5;
 
-        this.lambda = new StandardLambda(this, 'SupabaseKeepAlive', {
-            appName,
+        const lambda = new StandardLambda(this, 'SupabaseKeepAlive', {
             entry: resolve(APP_ROOT, 'src/supabaseKeepAlive/cron/supabaseKeepAlive.cron.ts'),
-            environment: {},
-            description: 'Supabase keepalive cron',
+            appName,
+            timeout: Duration.minutes(1),
+            runtime: Runtime.NODEJS_22_X,
+            environment: {
+                API_URL: '',
+            } satisfies Config,
         });
 
-        this.scheduleRule = new Rule(this, 'SupabaseKeepAliveSchedule', {
+        const scheduleRule = new Rule(this, 'SupabaseKeepAliveSchedule', {
             ruleName: `${appName}-supabase-keepalive-schedule`,
-            schedule: Schedule.rate(Duration.days(intervalDays)),
-            description: `Trigger Supabase keepalive Lambda every ${intervalDays} days`,
+            schedule: Schedule.rate(Duration.days(5)),
             enabled: true,
         });
 
-        this.scheduleRule.addTarget(
-            new LambdaFunction(this.lambda, {
+        scheduleRule.addTarget(
+            new LambdaFunction(lambda, {
                 retryAttempts: 2,
                 maxEventAge: Duration.hours(2),
             })
