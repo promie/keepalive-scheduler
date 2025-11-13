@@ -1,22 +1,24 @@
 import { Handler } from 'aws-lambda';
+import { Logger } from '@aws-lambda-powertools/logger';
 import { initConfig } from './config';
 import type { KeepaliveEvent, KeepaliveResponse } from './supabaseKeepAlive.cron.types';
 
+const logger = new Logger({ serviceName: 'supabase-keepalive' });
 const { API_URL } = initConfig();
 
 export const handler: Handler<KeepaliveEvent, KeepaliveResponse> = async (event, context) => {
-  console.log('Keepalive scheduler triggered', {
+  logger.info('Keepalive scheduler triggered', {
     requestId: context.awsRequestId,
     eventTime: event.time,
   });
 
   if (!API_URL) {
-    console.error('API_URL environment variable is not set');
+    logger.error('API_URL environment variable is not set');
     throw new Error('API_URL environment variable is required');
   }
 
   try {
-    console.log(`Making GET request to: ${API_URL}`);
+    logger.info(`Making GET request to: ${API_URL}`);
 
     const response = await fetch(API_URL, {
       method: 'GET',
@@ -25,14 +27,17 @@ export const handler: Handler<KeepaliveEvent, KeepaliveResponse> = async (event,
       },
     });
 
-    console.log(`Response status: ${response.status}`);
+    logger.info('Response received', { status: response.status });
 
     if (!response.ok) {
-      console.warn(`Non-OK response received: ${response.status} ${response.statusText}`);
+      logger.warn('Non-OK response received', {
+        status: response.status,
+        statusText: response.statusText,
+      });
     }
 
     const responseBody = await response.text();
-    console.log(`Response body length: ${responseBody.length} characters`);
+    logger.info('Response body received', { bodyLength: responseBody.length });
 
     return {
       statusCode: 200,
@@ -44,7 +49,9 @@ export const handler: Handler<KeepaliveEvent, KeepaliveResponse> = async (event,
       }),
     };
   } catch (error) {
-    console.error('Error making keepalive request:', error);
+    logger.error('Error making keepalive request', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
 
     return {
       statusCode: 200,
