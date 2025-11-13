@@ -8,7 +8,11 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy": "AWS_PROFILE=promie npm run build && AWS_PROFILE=promie npx cdk deploy",
+    "diff": "AWS_PROFILE=promie npx cdk diff",
+    "synth": "AWS_PROFILE=promie npx cdk synth",
+    "destroy": "AWS_PROFILE=promie npx cdk destroy"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",
